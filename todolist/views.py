@@ -156,13 +156,20 @@ class TaskDetail(APIView):
         else:
             return JsonResponse(code=status.HTTP_400_BAD_REQUEST, msg=serializer.error_messages)
 
+    def delete(self, request, pk):
+        try:
+            task = Task.objects.get(pk=pk)
+        except Task.DoesNotExist:
+            return JsonResponse(code=status.HTTP_404_NOT_FOUND, msg='task not found')
+        self.check_object_permissions(request, task)
+        return JsonResponse(code=status.HTTP_200_OK, msg='delete success')
+
 
 class addTask(APIView):
     """
     添加一个任务
     """
     permission_classes = (IsAuthenticated,)
-
 
     def perform_create(self, serializer):
         """
