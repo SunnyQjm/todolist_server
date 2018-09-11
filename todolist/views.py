@@ -12,7 +12,12 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import six
 from rest_framework.serializers import Serializer
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+from rest_framework_jwt.settings import api_settings
 
+
+#################################################
+# 一些辅助类
+#################################################
 
 class JsonResponse(Response):
     """
@@ -83,14 +88,30 @@ def pageJsonResponse(objs, request, Serializer):
 # Create your views here.
 
 
-# class getTaskList(generics.ListAPIView):
-#     queryset = Task.objects.all()
-#     serializer_class = TaskSerializer
+################################################
+# 用户管理相关接口
+################################################
 
-class Register(generics.CreateAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = ()
+# 下面两个函数用于生成token
+jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
+jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
+
+
+class Register(APIView):
+    """
+    用户注册接口
+    """
+    def post(self, request):
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            payload = jwt_payload_handler(serializer.instance)
+            token = jwt_encode_handler(payload)
+            result = serializer.data
+            result['token'] = token
+            return JsonResponse(code=status.HTTP_200_OK, msg='create user success', data=result)
+        else:
+            return JsonResponse(code=status.HTTP_400_BAD_REQUEST, msg=serializer.errors)
 
 
 ################################################
