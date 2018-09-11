@@ -143,6 +143,9 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
     ),
+    'EXCEPTION_HANDLER': (
+        'todolist.exception.custom_exception_handler'
+    )
 }
 
 JWT_AUTH = {

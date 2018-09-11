@@ -1,11 +1,15 @@
+# -*- coding: utf-8 -*-
+
 from rest_framework.views import exception_handler
+from todolist import views
 
 
 def custom_exception_handler(exc, context):
+    """
+    统一错误处理，返回统一的数据格式
+    :param exc:
+    :param context:
+    :return:
+    """
     response = exception_handler(exc, context)
-
-    if response is not None:
-        response.data['code'] = response.status_code
-        response.data['msg'] = response.data['detail']
-        del response.data['detail']
-    return response
+    return views.JsonResponse(msg=response.data['detail'], code=response.status_code)

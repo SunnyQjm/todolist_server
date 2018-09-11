@@ -128,10 +128,10 @@ class getTaskList(APIView):
 
 
 class TaskDetail(APIView):
-    permission_classes = (IsAuthenticated, permissions.IsOwnerReadOnly)
     """
     获取一个任务的详情
     """
+    permission_classes = (IsAuthenticated, permissions.IsOwnerReadOnly)
 
     def get(self, request, pk):
         try:
@@ -143,40 +143,31 @@ class TaskDetail(APIView):
         return JsonResponse(data=result.data, code=status.HTTP_200_OK, msg='Get task detail success')
 
 
-# @api_view()
-# def UpdateTask(request, pk, format=None):
-#     return Response({"message": "Hello, world!"})
-
 class UpdateTask(APIView):
     """
     更新一个任务的信息
     """
-    permission_classes = (IsAuthenticated, )
+    permission_classes = (IsAuthenticated, permissions.IsOwnerReadOnly)
 
-    def put(self, request, pk):
+    def put(self, request, id):
         try:
-            task = Task.objects.get(pk=pk)
+            task = Task.objects.get(pk=id)
         except Task.DoesNotExist:
             return JsonResponse(code=status.HTTP_404_NOT_FOUND, msg='task not found')
-
+        self.check_object_permissions(request, task)
         # 验证用户欲修改的对象是否属于这个用户
-        if permissions.IsOwnerReadOnly().has_object_permission(request, self, task):
-            serializer = TaskSerializer(task, data=request.data)
-            if serializer.is_valid():
-                serializer.save()
-                return JsonResponse(code=status.HTTP_200_OK, msg='update success', data=serializer.data)
-            else:
-                return JsonResponse(code=status.HTTP_400_BAD_REQUEST, msg=serializer.error_messages)
+        serializer = TaskSerializer(task, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return JsonResponse(code=status.HTTP_200_OK, msg='update success', data=serializer.data)
         else:
-            return permissionDenyResponse()
+            return JsonResponse(code=status.HTTP_400_BAD_REQUEST, msg=serializer.error_messages)
 
 
-class addTask(generics.CreateAPIView):
+class addTask(APIView):
     """
     添加一个任务
     """
-    queryset = Task.objects.all()
-    serializer_class = TaskSerializer
     permission_classes = (IsAuthenticated,)
 
     def perform_create(self, serializer):
