@@ -142,16 +142,9 @@ class TaskDetail(APIView):
         result = TaskSerializer(task)
         return JsonResponse(data=result.data, code=status.HTTP_200_OK, msg='Get task detail success')
 
-
-class UpdateTask(APIView):
-    """
-    更新一个任务的信息
-    """
-    permission_classes = (IsAuthenticated, permissions.IsOwnerReadOnly)
-
-    def put(self, request, id):
+    def put(self, request, pk):
         try:
-            task = Task.objects.get(pk=id)
+            task = Task.objects.get(pk=pk)
         except Task.DoesNotExist:
             return JsonResponse(code=status.HTTP_404_NOT_FOUND, msg='task not found')
         self.check_object_permissions(request, task)
@@ -169,6 +162,7 @@ class addTask(APIView):
     添加一个任务
     """
     permission_classes = (IsAuthenticated,)
+
 
     def perform_create(self, serializer):
         """
