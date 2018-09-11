@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
-from django.shortcuts import render
-from rest_framework.decorators import api_view
 
 from todolist.models import Task
 from todolist import permissions
@@ -82,9 +80,6 @@ def pageJsonResponse(objs, request, Serializer):
     }, code=status.HTTP_200_OK, msg='page success')
 
 
-def permissionDenyResponse():
-    return JsonResponse(code=status.HTTP_400_BAD_REQUEST, msg="permission deny!")
-
 # Create your views here.
 
 
@@ -100,17 +95,15 @@ class Register(generics.CreateAPIView):
 
 ################################################
 #  Task 相关接口
-################################################
+######################################
+##########
 
 # class getTaskList(generics.ListAPIView):
 #     serializer_class = TaskSerializer
 #     permission_classes = (IsAuthenticated,)
 #
 #     def get_queryset(self):
-#         """
-#         增加一个过滤，只获取自己的任务列表
-#         :return:
-#         """
+
 #         user = self.request.user
 #         queryset = Task.objects.filter(owner=user)
 #         return queryset
@@ -129,11 +122,17 @@ class getTaskList(APIView):
 
 class TaskDetail(APIView):
     """
-    获取一个任务的详情
+    对一个任务详情的一系列操作
     """
     permission_classes = (IsAuthenticated, permissions.IsOwnerReadOnly)
 
     def get(self, request, pk):
+        """
+        获取一个任务的详情
+        :param request:
+        :param pk:
+        :return:
+        """
         try:
             task = Task.objects.get(pk=pk)
         except Task.DoesNotExist:
@@ -143,6 +142,12 @@ class TaskDetail(APIView):
         return JsonResponse(data=result.data, code=status.HTTP_200_OK, msg='Get task detail success')
 
     def put(self, request, pk):
+        """
+        更新一个任务
+        :param request:
+        :param pk:
+        :return:
+        """
         try:
             task = Task.objects.get(pk=pk)
         except Task.DoesNotExist:
@@ -157,10 +162,17 @@ class TaskDetail(APIView):
             return JsonResponse(code=status.HTTP_400_BAD_REQUEST, msg=serializer.error_messages)
 
     def delete(self, request, pk):
+        """
+        删除一个任务
+        :param request:
+        :param pk:
+        :return:
+        """
         try:
             task = Task.objects.get(pk=pk)
         except Task.DoesNotExist:
             return JsonResponse(code=status.HTTP_404_NOT_FOUND, msg='task not found')
+        # 验证用户欲删除的对象是否属于这个用户
         self.check_object_permissions(request, task)
         return JsonResponse(code=status.HTTP_200_OK, msg='delete success')
 
@@ -171,10 +183,11 @@ class addTask(APIView):
     """
     permission_classes = (IsAuthenticated,)
 
-    def perform_create(self, serializer):
-        """
-        在保存任务的时候，同时关联创建者的信息
-        :param serializer:
-        :return:
-        """
-        serializer.save(owner=self.request.user)
+    def post(self, request):
+        self.check_permissions(request)
+        serializer = TaskSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(owner=request.user)
+            return JsonResponse(code=status.HTTP_200_OK, msg='add success', data=serializer.data)
+        else:
+            return JsonResponse(code=status.HTTP_400_BAD_REQUEST, msg=serializer.error_messages)
