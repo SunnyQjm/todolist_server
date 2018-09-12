@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from todolist.models import Task
 from todolist import permissions
 from rest_framework.views import APIView
+from rest_framework_jwt.views import ObtainJSONWebToken
 from rest_framework.response import Response
 from todolist.serializers import TaskSerializer, UserSerializer
 from rest_framework import generics, status
@@ -13,6 +14,7 @@ from django.utils import six
 from rest_framework.serializers import Serializer
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from rest_framework_jwt.settings import api_settings
+from datetime import datetime
 
 
 #################################################
@@ -95,11 +97,12 @@ def pageJsonResponse(objs, request, Serializer):
 # 下面两个函数用于生成token
 jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
 jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
+jwt_response_payload_handler = api_settings.JWT_RESPONSE_PAYLOAD_HANDLER
 
 
 class Register(APIView):
     """
-    用户注册接口
+    用户注册接口，注册成功之后会返回一个token，可以直接使用
     """
     def post(self, request):
         serializer = UserSerializer(data=request.data)
@@ -112,6 +115,31 @@ class Register(APIView):
             return JsonResponse(code=status.HTTP_200_OK, msg='create user success', data=result)
         else:
             return JsonResponse(code=status.HTTP_400_BAD_REQUEST, msg=serializer.errors)
+
+
+class Login(ObtainJSONWebToken):
+    """
+    用户登陆接口，登陆成功之后返回一个token以及用户的信息
+    """
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+
+        if serializer.is_valid():
+            user = serializer.object.get('user') or request.user
+            token = serializer.object.get('token')
+            response_data = jwt_response_payload_handler(token, user, request)
+            response_data['user'] = UserSerializer(user).data
+            response = JsonResponse(code=status.HTTP_200_OK, data=response_data, msg='login success')
+            if api_settings.JWT_AUTH_COOKIE:
+                expiration = (datetime.utcnow() +
+                              api_settings.JWT_EXPIRATION_DELTA)
+                response.set_cookie(api_settings.JWT_AUTH_COOKIE,
+                                    token,
+                                    expires=expiration,
+                                    httponly=True)
+            return response
+
+        return JsonResponse(msg=serializer.errors, code=status.HTTP_400_BAD_REQUEST)
 
 
 ################################################
