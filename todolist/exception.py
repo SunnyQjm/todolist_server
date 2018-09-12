@@ -12,4 +12,8 @@ def custom_exception_handler(exc, context):
     :return:
     """
     response = exception_handler(exc, context)
-    return views.JsonResponse(msg=response.data['detail'], code=response.status_code)
+    print response
+    if response:
+        return views.JsonResponse(msg=response.data['detail'], code=response.status_code)
+    else:
+        return views.JsonResponse(msg='error')

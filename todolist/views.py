@@ -15,6 +15,7 @@ from rest_framework.serializers import Serializer
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from rest_framework_jwt.settings import api_settings
 from datetime import datetime
+import time
 
 
 #################################################
@@ -74,7 +75,7 @@ def pageJsonResponse(objs, request, Serializer):
         objs = paginator.page(page)
     except PageNotAnInteger:
         objs = paginator.page(1)
-    except EmptyPage:       # 如果页数比总页数大，就返回空列表
+    except EmptyPage:  # 如果页数比总页数大，就返回空列表
         objs = []
 
     serializer = Serializer(objs, many=True)
@@ -104,6 +105,7 @@ class Register(APIView):
     """
     用户注册接口，注册成功之后会返回一个token，可以直接使用
     """
+
     def post(self, request):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
@@ -141,6 +143,7 @@ class Login(ObtainJSONWebToken):
     """
     用户登陆接口，登陆成功之后返回一个token以及用户的信息
     """
+
     def post(self, request, *args, **kwargs):
         return dealTokenPost(self, request, 'login success')
 
@@ -149,6 +152,7 @@ class UpdateToken(RefreshJSONWebToken):
     """
     对于没有过期的token，可以凭借旧的token获取一个新的有效的token
     """
+
     def post(self, request, *args, **kwargs):
         return dealTokenPost(self, request, 'update token success')
 
@@ -169,14 +173,40 @@ class UpdateToken(RefreshJSONWebToken):
 #         return queryset
 
 
+current_milli_time = lambda: int(round(time.time() * 1000))
+
+
 class getTaskList(APIView):
     """
     获取一个用户的任务列表
     """
 
-    def get(self, request, format=None):
+    def get(self, request):
         user = request.user
-        tasks = Task.objects.filter(owner=user)
+        order_by = request.GET.get('order_by')
+        finished = request.GET.get('finished')
+        expired = request.GET.get('expired')
+        odbs = []
+        if order_by:
+            odbs.append(order_by)
+        odbs.append('expire_date')
+        filters = {
+            'owner': user,
+        }
+
+        if finished:
+            filters['finished'] = finished
+
+        now = current_milli_time()
+        if expired:
+            if int(expired) == 0:
+                filters['expire_date__gt'] = now
+            else:
+                filters['expire_date__lte'] = now
+        else:
+            filters['expire_date__gt'] = now
+        print filters
+        tasks = Task.objects.order_by(*odbs).filter(**filters)
         return pageJsonResponse(tasks, request, TaskSerializer)
 
 
@@ -245,9 +275,10 @@ class addTask(APIView):
 
     def post(self, request):
         self.check_permissions(request)
+        print request.data
         serializer = TaskSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(owner=request.user)
             return JsonResponse(code=status.HTTP_200_OK, msg='add success', data=serializer.data)
         else:
-            return JsonResponse(code=status.HTTP_400_BAD_REQUEST, msg=serializer.error_messages)
+            return JsonResponse(code=status.HTTP_400_BAD_REQUEST, msg=serializer.errors)
