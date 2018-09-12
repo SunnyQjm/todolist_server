@@ -110,8 +110,7 @@ class Register(APIView):
             serializer.save()
             payload = jwt_payload_handler(serializer.instance)
             token = jwt_encode_handler(payload)
-            result = serializer.data
-            result['token'] = token
+            result = {'token': token, 'user': serializer.data}
             return JsonResponse(code=status.HTTP_200_OK, msg='create user success', data=result)
         else:
             return JsonResponse(code=status.HTTP_400_BAD_REQUEST, msg=serializer.errors)
