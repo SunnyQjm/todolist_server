@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 from todolist.models import Task
 from todolist import permissions
 from rest_framework.views import APIView
-from rest_framework_jwt.views import ObtainJSONWebToken
+from rest_framework_jwt.views import ObtainJSONWebToken, RefreshJSONWebToken
 from rest_framework.response import Response
 from todolist.serializers import TaskSerializer, UserSerializer
 from rest_framework import generics, status
@@ -117,29 +117,41 @@ class Register(APIView):
             return JsonResponse(code=status.HTTP_400_BAD_REQUEST, msg=serializer.errors)
 
 
+def dealTokenPost(view, request, msg=''):
+    serializer = view.get_serializer(data=request.data)
+
+    if serializer.is_valid():
+        user = serializer.object.get('user') or request.user
+        token = serializer.object.get('token')
+        response_data = jwt_response_payload_handler(token, user, request)
+        response_data['user'] = UserSerializer(user).data
+        response = JsonResponse(code=status.HTTP_200_OK, data=response_data, msg='login success')
+        if api_settings.JWT_AUTH_COOKIE:
+            expiration = (datetime.utcnow() +
+                          api_settings.JWT_EXPIRATION_DELTA)
+            response.set_cookie(api_settings.JWT_AUTH_COOKIE,
+                                token,
+                                expires=expiration,
+                                httponly=True)
+        return response
+
+    return JsonResponse(msg=serializer.errors, code=status.HTTP_400_BAD_REQUEST)
+
+
 class Login(ObtainJSONWebToken):
     """
     用户登陆接口，登陆成功之后返回一个token以及用户的信息
     """
     def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        return dealTokenPost(self, request, 'login success')
 
-        if serializer.is_valid():
-            user = serializer.object.get('user') or request.user
-            token = serializer.object.get('token')
-            response_data = jwt_response_payload_handler(token, user, request)
-            response_data['user'] = UserSerializer(user).data
-            response = JsonResponse(code=status.HTTP_200_OK, data=response_data, msg='login success')
-            if api_settings.JWT_AUTH_COOKIE:
-                expiration = (datetime.utcnow() +
-                              api_settings.JWT_EXPIRATION_DELTA)
-                response.set_cookie(api_settings.JWT_AUTH_COOKIE,
-                                    token,
-                                    expires=expiration,
-                                    httponly=True)
-            return response
 
-        return JsonResponse(msg=serializer.errors, code=status.HTTP_400_BAD_REQUEST)
+class UpdateToken(RefreshJSONWebToken):
+    """
+    对于没有过期的token，可以凭借旧的token获取一个新的有效的token
+    """
+    def post(self, request, *args, **kwargs):
+        return dealTokenPost(self, request, 'update token success')
 
 
 ################################################
