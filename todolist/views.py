@@ -206,7 +206,6 @@ class getTaskList(APIView):
                     filters['expire_date__lte'] = now
             else:
                 filters['expire_date__gt'] = now
-
         tasks = Task.objects.order_by(*odbs).filter(**filters)
         return pageJsonResponse(tasks, request, TaskSerializer)
 
@@ -265,7 +264,11 @@ class TaskDetail(APIView):
             return JsonResponse(code=status.HTTP_404_NOT_FOUND, msg='task not found')
         # 验证用户欲删除的对象是否属于这个用户
         self.check_object_permissions(request, task)
-        return JsonResponse(code=status.HTTP_200_OK, msg='delete success')
+
+        if task.delete():
+            return JsonResponse(code=status.HTTP_200_OK, msg='delete success')
+        else:
+            return JsonResponse(code=status.HTTP_400_BAD_REQUEST, msg='delete fail')
 
 
 class addTask(APIView):
