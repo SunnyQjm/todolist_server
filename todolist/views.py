@@ -69,6 +69,7 @@ def pageJsonResponse(objs, request, Serializer):
     except (TypeError, ValueError):
         return JsonResponse(code=status.HTTP_400_BAD_REQUEST, msg='page_size and page must be integer')
 
+    totalSize = len(objs)
     paginator = Paginator(objs, page_size)
     total = paginator.num_pages  # 总页数
     try:
@@ -85,6 +86,7 @@ def pageJsonResponse(objs, request, Serializer):
         'totalPage': total,
         'pageSize': page_size,
         'detail': serializer.data,
+        'totalSize': totalSize,
     }, code=status.HTTP_200_OK, msg='page success')
 
 
