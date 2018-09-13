@@ -196,16 +196,17 @@ class getTaskList(APIView):
 
         if finished:
             filters['finished'] = finished
-
-        now = current_milli_time()
-        if expired:
-            if int(expired) == 0:
-                filters['expire_date__gt'] = now
-            else:
-                filters['expire_date__lte'] = now
         else:
-            filters['expire_date__gt'] = now
-        print filters
+            filters['finished'] = False
+            now = current_milli_time()
+            if expired:
+                if int(expired) == 0:
+                    filters['expire_date__gt'] = now
+                else:
+                    filters['expire_date__lte'] = now
+            else:
+                filters['expire_date__gt'] = now
+
         tasks = Task.objects.order_by(*odbs).filter(**filters)
         return pageJsonResponse(tasks, request, TaskSerializer)
 
